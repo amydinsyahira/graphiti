@@ -1,0 +1,21 @@
+services:
+  falkordb:
+    image: falkordb/falkordb:latest
+    ports:
+      - "6380:6379" # Redis/FalkorDB port
+      - "3001:3000" # FalkorDB web UI
+    environment:
+      - FALKORDB_PASSWORD=${FALKORDB_PASSWORD:-}
+      - BROWSER=${BROWSER:-1}  # Enable FalkorDB Browser UI (set to 0 to disable)
+    volumes:
+      - falkordb_data:/var/lib/falkordb/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  falkordb_data:
+    driver: local

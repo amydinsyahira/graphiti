@@ -16,8 +16,9 @@ except ImportError:
 
 # Kuzu support removed - FalkorDB is now the default
 from graphiti_core.embedder import EmbedderClient, OpenAIEmbedder
-from graphiti_core.llm_client import LLMClient, OpenAIClient
+from graphiti_core.llm_client import LLMClient
 from graphiti_core.llm_client.config import LLMConfig as GraphitiLLMConfig
+from graphiti_core.llm_client.openai_generic_client import OpenAIGenericClient
 
 # Try to import additional providers if available
 try:
@@ -111,32 +112,20 @@ class LLMClientFactory:
                 if not config.providers.openai:
                     raise ValueError('OpenAI provider configuration not found')
 
-                api_key = config.providers.openai.api_key
+                openai_config = config.providers.openai
+                api_key = openai_config.api_key
                 _validate_api_key('OpenAI', api_key, logger)
 
-                from graphiti_core.llm_client.config import LLMConfig as CoreLLMConfig
-
-                # Use the same model for both main and small model slots
-                small_model = config.model
-
-                llm_config = CoreLLMConfig(
+                llm_config = GraphitiLLMConfig(
                     api_key=api_key,
+                    base_url=openai_config.api_url,
                     model=config.model,
-                    small_model=small_model,
+                    small_model=config.model,
                     temperature=config.temperature,
                     max_tokens=config.max_tokens,
                 )
 
-                # Check if this is a reasoning model (o1, o3, gpt-5 family)
-                reasoning_prefixes = ('o1', 'o3', 'gpt-5')
-                is_reasoning_model = config.model.startswith(reasoning_prefixes)
-
-                # Only pass reasoning/verbosity parameters for reasoning models (gpt-5 family)
-                if is_reasoning_model:
-                    return OpenAIClient(config=llm_config, reasoning='minimal', verbosity='low')
-                else:
-                    # For non-reasoning models, explicitly pass None to disable these parameters
-                    return OpenAIClient(config=llm_config, reasoning=None, verbosity=None)
+                return OpenAIGenericClient(config=llm_config, max_tokens=config.max_tokens)
 
             case 'azure_openai':
                 if not HAS_AZURE_LLM:
